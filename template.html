@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>美股每日简报</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: -apple-system, 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
+    background: #0d1117;
+    color: #e6edf3;
+    font-size: 14px;
+    line-height: 1.7;
+  }
+  .wrapper { max-width: 660px; margin: 0 auto; padding: 24px 16px; }
+
+  /* Header */
+  .header {
+    background: linear-gradient(135deg, #161b22 0%, #0d1117 100%);
+    border: 1px solid #30363d;
+    border-radius: 12px;
+    padding: 28px 32px;
+    margin-bottom: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .header::before {
+    content: '';
+    position: absolute; top:0; left:0; right:0; height:2px;
+    background: linear-gradient(90deg, #58a6ff, #3fb950, #58a6ff);
+  }
+  .header-title { font-size: 22px; font-weight: 700; color: #fff; letter-spacing: -0.5px; }
+  .header-date  { font-size: 13px; color: #8b949e; margin-top: 4px; }
+  .header-badge {
+    display: inline-block; margin-top: 12px;
+    padding: 3px 10px; border-radius: 20px; font-size: 12px;
+    background: #1f6feb; color: #fff;
+  }
+
+  /* Section card */
+  .card {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-bottom: 16px;
+  }
+  .card-title {
+    font-size: 13px; font-weight: 600; color: #8b949e;
+    text-transform: uppercase; letter-spacing: 0.8px;
+    margin-bottom: 14px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .card-title .icon { font-size: 14px; }
+
+  /* Quote table */
+  .quote-table { width: 100%; border-collapse: collapse; }
+  .quote-table th {
+    font-size: 11px; color: #6e7681; font-weight: 500;
+    text-align: left; padding: 0 8px 8px 0; border-bottom: 1px solid #21262d;
+  }
+  .quote-table td {
+    padding: 10px 8px 10px 0;
+    border-bottom: 1px solid #21262d;
+    font-size: 14px;
+  }
+  .quote-table tr:last-child td { border-bottom: none; }
+  .symbol { font-weight: 700; color: #58a6ff; font-size: 15px; }
+  .price  { font-weight: 600; color: #e6edf3; }
+  .up     { color: #3fb950; font-weight: 600; }
+  .down   { color: #f85149; font-weight: 600; }
+  .muted  { color: #8b949e; font-size: 12px; }
+  .pe-badge {
+    display: inline-block; padding: 1px 7px; border-radius: 4px;
+    font-size: 11px; font-weight: 600;
+  }
+  .pe-low  { background: #1a3a2a; color: #3fb950; }
+  .pe-mid  { background: #1c2e1c; color: #56d364; }
+  .pe-high { background: #3d1f00; color: #f0883e; }
+  .pe-very { background: #3d0000; color: #f85149; }
+
+  /* Gauge bar */
+  .gauge-row { display: flex; align-items: center; gap: 12px; margin: 8px 0; }
+  .gauge-label { font-size: 12px; color: #8b949e; min-width: 90px; }
+  .gauge-bar { flex:1; height: 6px; background: #21262d; border-radius: 3px; overflow:hidden; }
+  .gauge-fill { height: 100%; border-radius: 3px; transition: width .3s; }
+  .gauge-value { font-size: 13px; font-weight: 600; min-width: 50px; text-align:right; }
+  .fill-green  { background: #3fb950; }
+  .fill-yellow { background: #d29922; }
+  .fill-orange { background: #f0883e; }
+  .fill-red    { background: #f85149; }
+
+  /* Position box */
+  .position-box {
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-top: 8px;
+  }
+  .position-pct {
+    font-size: 36px; font-weight: 700;
+    color: #58a6ff; letter-spacing: -1px;
+    line-height: 1.1;
+  }
+  .position-label { font-size: 12px; color: #8b949e; margin-top: 2px; }
+  .position-desc  { font-size: 13px; color: #c9d1d9; margin-top: 10px; line-height: 1.6; }
+
+  /* AI analysis block */
+  .ai-block { margin-bottom: 12px; }
+  .ai-label { font-size: 11px; color: #6e7681; margin-bottom: 4px; font-weight:600; letter-spacing:.5px; }
+  .ai-text  { font-size: 13px; color: #c9d1d9; line-height: 1.7; }
+
+  /* Risk / focus pills */
+  .pill-list { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+  .pill {
+    padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight:500;
+    background: #1c2128; border: 1px solid #30363d; color: #c9d1d9;
+  }
+  .pill.risk { border-color: #b91c1c; color: #fca5a5; background: #2c1010; }
+  .pill.focus { border-color: #1d4ed8; color: #93c5fd; background: #0f172a; }
+
+  /* Stock comment rows */
+  .stock-row { display:flex; align-items:flex-start; gap:10px; padding: 8px 0; border-bottom: 1px solid #21262d; }
+  .stock-row:last-child { border-bottom:none; }
+  .stock-sym { font-weight:700; color:#58a6ff; min-width:44px; font-size:13px; }
+  .stock-comment { font-size:13px; color:#c9d1d9; }
+
+  /* Footer */
+  .footer {
+    text-align:center; padding: 20px 0 8px;
+    font-size:12px; color: #484f58;
+    border-top: 1px solid #21262d;
+    margin-top:8px;
+  }
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-title">📈 美股每日简报</div>
+    <div class="header-date">{{ date }}</div>
+    <span class="header-badge">自动生成 · 仅供参考</span>
+  </div>
+
+  <!-- 行情速览 -->
+  <div class="card">
+    <div class="card-title"><span class="icon">📊</span> 行情速览</div>
+    <table class="quote-table">
+      <thead>
+        <tr>
+          <th>标的</th>
+          <th>价格</th>
+          <th>涨跌</th>
+          <th>PE</th>
+          <th>52周区间</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for q in quotes %}
+        {% if not q.get('error') %}
+        <tr>
+          <td><span class="symbol">{{ q.symbol }}</span>
+            <br><span class="muted">{{ q.get('name','') | truncate(16, True, '...') }}</span>
+          </td>
+          <td class="price">${{ q.price or 'N/A' }}</td>
+          <td>
+            {% if q.change_pct is not none %}
+              {% if q.change_pct >= 0 %}
+                <span class="up">▲ {{ "%.2f"|format(q.change_pct) }}%</span>
+              {% else %}
+                <span class="down">▼ {{ "%.2f"|format(q.change_pct|abs) }}%</span>
+              {% endif %}
+            {% else %}
+              <span class="muted">N/A</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if q.pe_ratio %}
+              {% if q.pe_ratio < 22 %}
+                <span class="pe-badge pe-low">{{ "%.1f"|format(q.pe_ratio) }}</span>
+              {% elif q.pe_ratio < 28 %}
+                <span class="pe-badge pe-mid">{{ "%.1f"|format(q.pe_ratio) }}</span>
+              {% elif q.pe_ratio < 35 %}
+                <span class="pe-badge pe-high">{{ "%.1f"|format(q.pe_ratio) }}</span>
+              {% else %}
+                <span class="pe-badge pe-very">{{ "%.1f"|format(q.pe_ratio) }}</span>
+              {% endif %}
+            {% else %}
+              <span class="muted">—</span>
+            {% endif %}
+          </td>
+          <td class="muted">
+            {% if q.week52_low and q.week52_high %}
+              ${{ "%.0f"|format(q.week52_low) }} – ${{ "%.0f"|format(q.week52_high) }}
+            {% else %}—{% endif %}
+          </td>
+        </tr>
+        {% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 市场情绪 -->
+  <div class="card">
+    <div class="card-title"><span class="icon">🌡️</span> 市场情绪</div>
+
+    {% if fear_greed.score is not none %}
+    <div class="gauge-row">
+      <span class="gauge-label">恐贪指数</span>
+      <div class="gauge-bar">
+        <div class="gauge-fill
+          {% if fear_greed.score < 25 %}fill-red
+          {% elif fear_greed.score < 45 %}fill-orange
+          {% elif fear_greed.score < 65 %}fill-yellow
+          {% else %}fill-green{% endif %}"
+          style="width:{{ fear_greed.score }}%"></div>
+      </div>
+      <span class="gauge-value
+        {% if fear_greed.score < 25 %}down
+        {% elif fear_greed.score < 65 %}muted
+        {% else %}up{% endif %}">
+        {{ fear_greed.score }} <span class="muted" style="font-size:11px">{{ fear_greed.rating }}</span>
+      </span>
+    </div>
+    {% endif %}
+
+    {% if vix.price is not none %}
+    <div class="gauge-row">
+      <span class="gauge-label">VIX 恐慌指数</span>
+      <div class="gauge-bar">
+        <div class="gauge-fill
+          {% if vix.price > 30 %}fill-red
+          {% elif vix.price > 20 %}fill-orange
+          {% else %}fill-green{% endif %}"
+          style="width:{{ [vix.price * 2, 100] | min }}%"></div>
+      </div>
+      <span class="gauge-value {% if vix.price > 25 %}down{% elif vix.price < 16 %}up{% else %}muted{% endif %}">
+        {{ vix.price }}
+        {% if vix.change_pct is not none %}
+          <span class="muted" style="font-size:11px">{{ "%+.1f"|format(vix.change_pct) }}%</span>
+        {% endif %}
+      </span>
+    </div>
+    {% endif %}
+
+    {% if qqq_drawdown is not none %}
+    <div class="gauge-row">
+      <span class="gauge-label">QQQ 回撤</span>
+      <div class="gauge-bar">
+        <div class="gauge-fill
+          {% if qqq_drawdown < -20 %}fill-red
+          {% elif qqq_drawdown < -10 %}fill-orange
+          {% elif qqq_drawdown < -5 %}fill-yellow
+          {% else %}fill-green{% endif %}"
+          style="width:{{ [qqq_drawdown|abs * 3, 100]|min }}%"></div>
+      </div>
+      <span class="gauge-value {% if qqq_drawdown < -10 %}down{% elif qqq_drawdown > -5 %}up{% else %}muted{% endif %}">
+        {{ "%+.2f"|format(qqq_drawdown) }}%
+      </span>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- 仓位建议 -->
+  <div class="card">
+    <div class="card-title"><span class="icon">⚖️</span> 仓位建议</div>
+    <div class="position-box">
+      <div class="position-pct">{{ analysis.rule_suggestion.position_pct }}%</div>
+      <div class="position-label">建议权益仓位 · 基于 QQQ PE 估值规则</div>
+      <div class="position-desc">
+        估值状态：<strong>{{ analysis.rule_suggestion.level }}</strong> — {{ analysis.rule_suggestion.desc }}
+      </div>
+    </div>
+
+    {% if analysis.ai_available and analysis.position_advice %}
+    <div class="ai-block" style="margin-top:14px">
+      <div class="ai-label">🤖 AI 综合建议</div>
+      <div class="ai-text">{{ analysis.position_advice }}</div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- AI 市场解读 -->
+  {% if analysis.ai_available %}
+  <div class="card">
+    <div class="card-title"><span class="icon">🤖</span> AI 市场解读</div>
+
+    {% if analysis.market_summary %}
+    <div class="ai-block">
+      <div class="ai-label">市场概况</div>
+      <div class="ai-text">{{ analysis.market_summary }}</div>
+    </div>
+    {% endif %}
+
+    {% if analysis.qqq_analysis %}
+    <div class="ai-block" style="margin-top:12px">
+      <div class="ai-label">QQQ 分析</div>
+      <div class="ai-text">{{ analysis.qqq_analysis }}</div>
+    </div>
+    {% endif %}
+
+    {% if analysis.stocks_comment %}
+    <div class="ai-block" style="margin-top:12px">
+      <div class="ai-label">个股简评</div>
+      {% for line in analysis.stocks_comment.split('\n') %}
+        {% if line.strip() %}
+          <div class="stock-row">
+            {% set sym = line.split(':')[0].split('：')[0].strip().replace('- ','').replace('• ','') %}
+            <span class="stock-sym">{{ sym }}</span>
+            <span class="stock-comment">{{ line.split('：')[-1].split(':')[-1].strip() }}</span>
+          </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- 风险与关注 -->
+  <div class="card">
+    <div class="card-title"><span class="icon">⚠️</span> 风险与明日关注</div>
+
+    {% if analysis.risk_watch %}
+    <div class="ai-label">风险提示</div>
+    <div class="pill-list" style="margin-bottom:14px">
+      {% for item in analysis.risk_watch.split('\n') %}
+        {% if item.strip() %}
+          <span class="pill risk">{{ item.strip().lstrip('- •1234567890.') }}</span>
+        {% endif %}
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if analysis.tomorrow_focus %}
+    <div class="ai-label">明日关注</div>
+    <div class="pill-list">
+      {% for item in analysis.tomorrow_focus.split('\n') %}
+        {% if item.strip() %}
+          <span class="pill focus">{{ item.strip().lstrip('- •1234567890.') }}</span>
+        {% endif %}
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <!-- Footer -->
+  <div class="footer">
+    数据来源：Yahoo Finance · CNN · yfinance 开源库<br>
+    本简报由自动程序生成，仅供参考，不构成投资建议。
+  </div>
+
+</div>
+</body>
+</html>

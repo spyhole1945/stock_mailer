@@ -30,6 +30,11 @@ POSITION_RULES = {
 }
 
 # ── 三层定投策略参数 ─────────────────────────────────────
+# 定投频率设置
+DCA_FREQUENCY     = "monthly"   # 可选: "monthly" / "biweekly" / "weekly"
+DCA_EXECUTE_DAY   = 1           # 每月第几日执行（monthly 模式有效，1 = 每月1日）
+#                                 biweekly: 每隔14天; weekly: 每周一
+
 # 每月总预算分配比例
 DCA_LAYER1_RATIO = 0.50   # 第一层：基础定投，无条件执行
 DCA_LAYER2_RATIO = 0.30   # 第二层：估值增强，根据 PE 调整

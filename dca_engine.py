@@ -3,11 +3,86 @@ dca_engine.py
 三层定投策略计算引擎
 根据当前市场数据（PE、回撤、恐贪指数）计算本期各层建议投入金额
 """
+import datetime
 from config import (
     DCA_LAYER1_RATIO, DCA_LAYER2_RATIO, DCA_LAYER3_RATIO,
     DCA_LAYER2_PE_MULTIPLIER, DCA_LAYER3_TRIGGERS,
-    DCA_TAKE_PROFIT_PE, POSITION_RULES
+    DCA_TAKE_PROFIT_PE, POSITION_RULES,
+    DCA_FREQUENCY, DCA_EXECUTE_DAY,
 )
+
+
+def get_execute_status() -> dict:
+    """
+    判断今天是否为操作日，并计算距下次操作日的天数。
+    返回:
+      is_execute_day: 今天是否操作日
+      next_date:      下一个操作日（date 对象）
+      days_until:     距下次操作日天数（0 = 今天就是）
+      frequency_desc: 频率描述文字
+    """
+    today = datetime.date.today()
+
+    if DCA_FREQUENCY == "monthly":
+        # 每月第 DCA_EXECUTE_DAY 日
+        freq_desc = f"每月 {DCA_EXECUTE_DAY} 日"
+        # 本月操作日
+        try:
+            this_month_date = today.replace(day=DCA_EXECUTE_DAY)
+        except ValueError:
+            # 本月没有该日（如2月没有30日），取月末
+            import calendar
+            last_day = calendar.monthrange(today.year, today.month)[1]
+            this_month_date = today.replace(day=last_day)
+
+        if today <= this_month_date:
+            next_date = this_month_date
+        else:
+            # 下个月
+            if today.month == 12:
+                next_date = datetime.date(today.year + 1, 1, DCA_EXECUTE_DAY)
+            else:
+                try:
+                    next_date = datetime.date(today.year, today.month + 1, DCA_EXECUTE_DAY)
+                except ValueError:
+                    import calendar
+                    last_day = calendar.monthrange(today.year, today.month + 1)[1]
+                    next_date = datetime.date(today.year, today.month + 1, last_day)
+
+    elif DCA_FREQUENCY == "biweekly":
+        freq_desc = "每两周"
+        # 以每年第一个周一为基准，每14天一次
+        year_start = datetime.date(today.year, 1, 1)
+        days_since = (today - year_start).days
+        cycle = 14
+        days_into_cycle = days_since % cycle
+        if days_into_cycle == 0:
+            next_date = today
+        else:
+            next_date = today + datetime.timedelta(days=cycle - days_into_cycle)
+
+    elif DCA_FREQUENCY == "weekly":
+        freq_desc = "每周一"
+        # 本周或下周一
+        days_until_monday = (7 - today.weekday()) % 7
+        if days_until_monday == 0:
+            next_date = today
+        else:
+            next_date = today + datetime.timedelta(days=days_until_monday)
+
+    else:
+        freq_desc = "每月"
+        next_date = today
+
+    days_until    = (next_date - today).days
+    is_execute_day = (days_until == 0)
+
+    return {
+        "is_execute_day": is_execute_day,
+        "next_date":      next_date.strftime("%Y-%m-%d"),
+        "days_until":     days_until,
+        "frequency_desc": freq_desc,
+    }
 
 
 def get_layer2_multiplier(pe_ratio: float) -> tuple:
@@ -69,6 +144,9 @@ def calculate(market_data: dict, monthly_budget: float = None) -> dict:
     drawdown  = market_data.get("qqq_drawdown")
     fg_score  = market_data.get("fear_greed", {}).get("score")
 
+    # ── 操作日判断 ──────────────────────────────────────
+    execute_status = get_execute_status()
+
     # ── 第一层：无条件执行 ──────────────────────────────
     layer1_ratio = DCA_LAYER1_RATIO
     layer1_desc  = "无条件执行，确保持续入场"
@@ -101,16 +179,17 @@ def calculate(market_data: dict, monthly_budget: float = None) -> dict:
 
     # ── 本期总投入比例 ──────────────────────────────────
     total_ratio_before_emotion = layer1_ratio + layer2_ratio + layer3_ratio
-    total_ratio = min(total_ratio_before_emotion * emotion_multiplier, 2.0)  # 最多双倍预算
+    total_ratio = min(total_ratio_before_emotion * emotion_multiplier, 2.0)
 
     # ── 止盈信号 ────────────────────────────────────────
     take_profit = get_take_profit_signal(pe_ratio)
 
     # ── 构建结果 ────────────────────────────────────────
     result = {
-        "pe_ratio":   pe_ratio,
-        "drawdown":   drawdown,
-        "fg_score":   fg_score,
+        "pe_ratio":      pe_ratio,
+        "drawdown":      drawdown,
+        "fg_score":      fg_score,
+        "execute_status": execute_status,
 
         "layer1": {
             "ratio":  layer1_ratio,
@@ -135,7 +214,6 @@ def calculate(market_data: dict, monthly_budget: float = None) -> dict:
         "total_ratio":        round(total_ratio, 3),
         "take_profit":        take_profit,
 
-        # 人类可读的本期操作建议
         "action_summary": _build_action_summary(
             layer1_ratio, layer2_ratio, layer2_active, l2_reason,
             l3_triggered, layer3_ratio, l3_reason,
@@ -143,7 +221,6 @@ def calculate(market_data: dict, monthly_budget: float = None) -> dict:
         ),
     }
 
-    # 如果提供了月预算，额外计算具体金额
     if monthly_budget:
         result["monthly_budget"] = monthly_budget
         result["layer1_amount"]  = round(monthly_budget * layer1_ratio, 2)

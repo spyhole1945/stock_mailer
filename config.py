@@ -16,8 +16,11 @@ SMTP_HOST = "smtp.163.com"
 SMTP_PORT = 465   # SSL
 
 # ── Claude API ───────────────────────────────────────────
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
-CLAUDE_MODEL      = "claude-sonnet-4-20250514"
+# ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+# CLAUDE_MODEL      = "claude-sonnet-4-20250514"
+OPENAI_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
+OPENAI_MODEL   = "deepseek-chat"   # 改这里
+DEEPSEEK_BASE_URL = "https://api.deepseek.com"
 
 # ── 仓位参考阈值（QQQ PE 为核心信号）────────────────────
 # 根据自身风险偏好可调整

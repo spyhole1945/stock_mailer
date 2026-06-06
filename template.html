@@ -127,6 +127,17 @@
   .stock-sym { font-weight:700; color:#58a6ff; min-width:44px; font-size:13px; }
   .stock-comment { font-size:13px; color:#c9d1d9; }
 
+  /* Risk badge in quote table */
+  .risk-badge {
+    display: inline-block; padding: 2px 8px; border-radius: 4px;
+    font-size: 11px; font-weight: 600; white-space: nowrap;
+  }
+  .risk-low  { background: #1a3a2a; color: #3fb950; }
+  .risk-mid  { background: #2d2a12; color: #d29922; }
+  .risk-high { background: #3d1f00; color: #f0883e; }
+  .risk-very { background: #3d0000; color: #f85149; }
+  .risk-reason { font-size: 11px; color: #6e7681; display: block; margin-top: 2px; }
+
   /* Footer */
   .footer {
     text-align:center; padding: 20px 0 8px;
@@ -157,6 +168,7 @@
           <th>涨跌</th>
           <th>PE</th>
           <th>52周区间</th>
+          <th>当前风险</th>
         </tr>
       </thead>
       <tbody>
@@ -197,6 +209,28 @@
             {% if q.week52_low and q.week52_high %}
               ${{ "%.0f"|format(q.week52_low) }} – ${{ "%.0f"|format(q.week52_high) }}
             {% else %}—{% endif %}
+          </td>
+          <td>
+            {% set risk = analysis.symbol_risk.get(q.symbol, {}) if analysis.ai_available and analysis.symbol_risk is defined else {} %}
+            {% if risk %}
+              {% set lvl = risk.get('level', '') %}
+              {% if lvl == '低' %}
+                <span class="risk-badge risk-low">低风险</span>
+              {% elif lvl == '中' %}
+                <span class="risk-badge risk-mid">中风险</span>
+              {% elif lvl == '高' %}
+                <span class="risk-badge risk-high">高风险</span>
+              {% elif lvl == '极高' %}
+                <span class="risk-badge risk-very">极高风险</span>
+              {% else %}
+                <span class="muted">—</span>
+              {% endif %}
+              {% if risk.get('reason') %}
+                <span class="risk-reason">{{ risk.reason }}</span>
+              {% endif %}
+            {% else %}
+              <span class="muted">—</span>
+            {% endif %}
           </td>
         </tr>
         {% endif %}

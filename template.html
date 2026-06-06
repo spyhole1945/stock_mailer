@@ -138,6 +138,55 @@
   .risk-very { background: #3d0000; color: #f85149; }
   .risk-reason { font-size: 11px; color: #6e7681; display: block; margin-top: 2px; }
 
+  /* DCA strategy card */
+  .dca-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .dca-total-box {
+    background: #0d1117; border: 1px solid #30363d;
+    border-radius: 8px; padding: 12px 18px;
+    display: flex; align-items: baseline; gap: 8px;
+  }
+  .dca-total-pct {
+    font-size: 32px; font-weight: 700; color: #58a6ff; letter-spacing: -1px;
+  }
+  .dca-total-label { font-size: 12px; color: #8b949e; }
+  .dca-layer {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 10px 0; border-bottom: 1px solid #21262d;
+  }
+  .dca-layer:last-of-type { border-bottom: none; }
+  .dca-layer-icon { font-size: 16px; min-width: 22px; margin-top: 1px; }
+  .dca-layer-body { flex: 1; }
+  .dca-layer-title { font-size: 13px; font-weight: 600; color: #e6edf3; }
+  .dca-layer-desc  { font-size: 12px; color: #8b949e; margin-top: 2px; }
+  .dca-layer-ratio {
+    font-size: 13px; font-weight: 700; min-width: 48px;
+    text-align: right; align-self: center;
+  }
+  .dca-active   { color: #3fb950; }
+  .dca-reduced  { color: #d29922; }
+  .dca-paused   { color: #484f58; }
+  .dca-trigger  { color: #f85149; }
+  .dca-emotion {
+    margin-top: 10px; padding: 8px 12px;
+    background: #0d1117; border-radius: 6px;
+    font-size: 12px; color: #8b949e;
+    border-left: 3px solid #30363d;
+  }
+  .dca-ai-comment {
+    margin-top: 12px; padding-top: 12px;
+    border-top: 1px solid #21262d;
+    font-size: 13px; color: #c9d1d9; line-height: 1.6;
+  }
+  .dca-take-profit {
+    margin-top: 10px; padding: 8px 12px;
+    background: #3d1f00; border-radius: 6px;
+    font-size: 12px; color: #f0883e;
+    border-left: 3px solid #f0883e;
+  }
+
   /* Footer */
   .footer {
     text-align:center; padding: 20px 0 8px;
@@ -315,6 +364,75 @@
     <div class="ai-block" style="margin-top:14px">
       <div class="ai-label">🤖 AI 综合建议</div>
       <div class="ai-text">{{ analysis.position_advice }}</div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- 本期定投建议 -->
+  <div class="card">
+    <div class="card-title"><span class="icon">💰</span> 本期定投建议</div>
+
+    <div class="dca-header">
+      <div style="font-size:13px; color:#8b949e;">三层策略计算结果</div>
+      <div class="dca-total-box">
+        <div class="dca-total-pct">{{ (dca.total_ratio * 100) | int }}%</div>
+        <div class="dca-total-label">本期投入<br>（×月预算）</div>
+      </div>
+    </div>
+
+    <!-- 第一层 -->
+    <div class="dca-layer">
+      <div class="dca-layer-icon">✅</div>
+      <div class="dca-layer-body">
+        <div class="dca-layer-title">第一层：基础定投</div>
+        <div class="dca-layer-desc">{{ dca.layer1.desc }}</div>
+      </div>
+      <div class="dca-layer-ratio dca-active">{{ (dca.layer1.ratio * 100) | int }}%</div>
+    </div>
+
+    <!-- 第二层 -->
+    <div class="dca-layer">
+      <div class="dca-layer-icon">{% if dca.layer2.active %}📊{% else %}⏸️{% endif %}</div>
+      <div class="dca-layer-body">
+        <div class="dca-layer-title">第二层：估值增强</div>
+        <div class="dca-layer-desc">{{ dca.layer2.reason }}</div>
+      </div>
+      <div class="dca-layer-ratio
+        {% if not dca.layer2.active %}dca-paused
+        {% elif dca.layer2.multiplier > 1 %}dca-active
+        {% elif dca.layer2.multiplier == 1 %}dca-active
+        {% else %}dca-reduced{% endif %}">
+        {% if dca.layer2.active %}{{ (dca.layer2.ratio * 100) | int }}%{% else %}暂停{% endif %}
+      </div>
+    </div>
+
+    <!-- 第三层 -->
+    <div class="dca-layer">
+      <div class="dca-layer-icon">{% if dca.layer3.triggered %}🚨{% else %}💤{% endif %}</div>
+      <div class="dca-layer-body">
+        <div class="dca-layer-title">第三层：极端机会</div>
+        <div class="dca-layer-desc">{{ dca.layer3.reason }}</div>
+      </div>
+      <div class="dca-layer-ratio {% if dca.layer3.triggered %}dca-trigger{% else %}dca-paused{% endif %}">
+        {% if dca.layer3.triggered %}{{ (dca.layer3.ratio * 100) | int }}%{% else %}待命{% endif %}
+      </div>
+    </div>
+
+    <!-- 情绪修正 -->
+    {% if dca.emotion_note %}
+    <div class="dca-emotion">🎭 {{ dca.emotion_note }}</div>
+    {% endif %}
+
+    <!-- 止盈信号 -->
+    {% if dca.take_profit.triggered %}
+    <div class="dca-take-profit">🔔 止盈提示：{{ dca.take_profit.desc }}</div>
+    {% endif %}
+
+    <!-- AI 点评 -->
+    {% if analysis.ai_available and analysis.dca_comment %}
+    <div class="dca-ai-comment">
+      <span style="font-size:11px; color:#6e7681; font-weight:600;">🤖 AI 点评</span><br>
+      {{ analysis.dca_comment }}
     </div>
     {% endif %}
   </div>

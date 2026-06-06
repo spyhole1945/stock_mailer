@@ -4,19 +4,23 @@ main.py
 """
 import sys
 from fetch_data import fetch_all
-from analyze    import analyze
-from send_email import send
+from dca_engine  import calculate as dca_calculate
+from analyze     import analyze
+from send_email  import send
 
 
 def main():
     print("📡 正在采集市场数据...")
     market_data = fetch_all()
 
+    print("📐 正在计算定投策略...")
+    dca_result = dca_calculate(market_data)
+
     print("🤖 正在 AI 分析...")
-    analysis = analyze(market_data)
+    analysis = analyze(market_data, dca_result)
 
     print("📧 正在发送邮件...")
-    ok = send(market_data, analysis)
+    ok = send(market_data, analysis, dca_result)
 
     if not ok:
         sys.exit(1)

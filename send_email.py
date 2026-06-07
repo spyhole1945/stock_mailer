@@ -11,8 +11,7 @@ from jinja2 import Environment, FileSystemLoader
 from config import EMAIL_SENDER, EMAIL_PASSWORD, EMAIL_RECEIVER, SMTP_HOST, SMTP_PORT
 
 
-def render_html(market_data: dict, analysis: dict, dca_result: dict) -> str:
-    """用 Jinja2 渲染邮件 HTML"""
+def render_html(market_data, analysis, dca_result, s2_result) -> str:
     env = Environment(loader=FileSystemLoader("."), autoescape=True)
     template = env.get_template("template.html")
     return template.render(
@@ -23,17 +22,17 @@ def render_html(market_data: dict, analysis: dict, dca_result: dict) -> str:
         qqq_drawdown = market_data.get("qqq_drawdown"),
         analysis     = analysis,
         dca          = dca_result,
+        s2           = s2_result,
     )
 
 
-def send(market_data: dict, analysis: dict, dca_result: dict) -> bool:
-    """发送邮件，成功返回 True"""
-    today = datetime.datetime.now().strftime("%m/%d")
-    pe_str = _qqq_pe(market_data)
+def send(market_data, analysis, dca_result, s2_result) -> bool:
+    today   = datetime.datetime.now().strftime("%m/%d")
+    pe_str  = _qqq_pe(market_data)
     dca_pct = f"{dca_result.get('total_ratio', 1.0)*100:.0f}%"
-    subject = f"📈 美股简报 {today} | QQQ PE {pe_str} | 本期定投 {dca_pct}"
+    subject = f"📈 美股简报 {today} | QQQ PE {pe_str} | 策略一定投 {dca_pct}"
 
-    html_body = render_html(market_data, analysis, dca_result)
+    html_body = render_html(market_data, analysis, dca_result, s2_result)
 
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
@@ -53,7 +52,7 @@ def send(market_data: dict, analysis: dict, dca_result: dict) -> bool:
         return False
 
 
-def _qqq_pe(market_data: dict) -> str:
+def _qqq_pe(market_data) -> str:
     qqq = next((q for q in market_data.get("quotes", []) if q.get("symbol") == "QQQ"), {})
     pe  = qqq.get("pe_ratio")
     return f"{pe:.1f}" if pe else "N/A"

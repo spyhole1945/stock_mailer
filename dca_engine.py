@@ -8,7 +8,7 @@ from config import (
     DCA_LAYER1_RATIO, DCA_LAYER2_RATIO, DCA_LAYER3_RATIO,
     DCA_LAYER2_PE_MULTIPLIER, DCA_LAYER3_TRIGGERS,
     DCA_TAKE_PROFIT_PE, POSITION_RULES,
-    DCA_FREQUENCY, DCA_EXECUTE_DAY,
+    DCA_FREQUENCY, DCA_EXECUTE_DAY, DCA_MONTHLY_BUDGET,
 )
 
 
@@ -137,10 +137,13 @@ def get_take_profit_signal(pe_ratio: float) -> dict:
 def calculate(market_data: dict, monthly_budget: float = None) -> dict:
     """
     主计算函数
-    monthly_budget: 月度总预算（可选，填入后输出具体金额；不填则只输出比例）
+    monthly_budget: 月度总预算（不传则使用 config 里的 DCA_MONTHLY_BUDGET）
     """
+    budget = monthly_budget or DCA_MONTHLY_BUDGET
+
     qqq = next((q for q in market_data.get("quotes", []) if q["symbol"] == "QQQ"), {})
     pe_ratio  = qqq.get("pe_ratio")
+    qqq_price = qqq.get("price")        # ← 新增：采集到的 QQQ 实时价格
     drawdown  = market_data.get("qqq_drawdown")
     fg_score  = market_data.get("fear_greed", {}).get("score")
 
@@ -184,34 +187,46 @@ def calculate(market_data: dict, monthly_budget: float = None) -> dict:
     # ── 止盈信号 ────────────────────────────────────────
     take_profit = get_take_profit_signal(pe_ratio)
 
+    # ── 各层具体金额 ────────────────────────────────────
+    layer1_amount = round(budget * layer1_ratio, 0)
+    layer2_amount = round(budget * layer2_ratio, 0)
+    layer3_amount = round(budget * layer3_ratio, 0)
+    total_amount  = round(budget * total_ratio, 0)
+
     # ── 构建结果 ────────────────────────────────────────
     result = {
-        "pe_ratio":      pe_ratio,
-        "drawdown":      drawdown,
-        "fg_score":      fg_score,
+        "pe_ratio":       pe_ratio,
+        "qqq_price":      qqq_price,    # ← 新增
+        "drawdown":       drawdown,
+        "fg_score":       fg_score,
+        "monthly_budget": budget,
         "execute_status": execute_status,
 
         "layer1": {
             "ratio":  layer1_ratio,
+            "amount": layer1_amount,
             "desc":   layer1_desc,
             "active": True,
         },
         "layer2": {
-            "ratio":       layer2_ratio,
-            "multiplier":  l2_multiplier,
-            "reason":      l2_reason,
-            "active":      layer2_active,
+            "ratio":      layer2_ratio,
+            "amount":     layer2_amount,
+            "multiplier": l2_multiplier,
+            "reason":     l2_reason,
+            "active":     layer2_active,
         },
         "layer3": {
-            "ratio":       layer3_ratio,
-            "triggered":   l3_triggered,
-            "multiplier":  l3_multiplier,
-            "reason":      l3_reason,
+            "ratio":     layer3_ratio,
+            "amount":    layer3_amount,
+            "triggered": l3_triggered,
+            "multiplier":l3_multiplier,
+            "reason":    l3_reason,
         },
 
         "emotion_multiplier": emotion_multiplier,
         "emotion_note":       emotion_note,
         "total_ratio":        round(total_ratio, 3),
+        "total_amount":       total_amount,
         "take_profit":        take_profit,
 
         "action_summary": _build_action_summary(
@@ -220,13 +235,6 @@ def calculate(market_data: dict, monthly_budget: float = None) -> dict:
             emotion_note, total_ratio, take_profit
         ),
     }
-
-    if monthly_budget:
-        result["monthly_budget"] = monthly_budget
-        result["layer1_amount"]  = round(monthly_budget * layer1_ratio, 2)
-        result["layer2_amount"]  = round(monthly_budget * layer2_ratio, 2)
-        result["layer3_amount"]  = round(monthly_budget * layer3_ratio, 2)
-        result["total_amount"]   = round(monthly_budget * total_ratio, 2)
 
     return result
 

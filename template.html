@@ -397,10 +397,32 @@
     {% endif %}
 
     <div class="dca-header">
-      <div style="font-size:13px; color:#8b949e;">三层策略计算结果</div>
+      <div>
+        <div style="font-size:13px; color:#8b949e; margin-bottom:6px;">三层策略计算结果</div>
+        <!-- QQQ 价格确认行 -->
+        <div style="font-size:12px; color:#484f58;">
+          计算依据：QQQ
+          {% if dca.qqq_price %}
+            <span style="color:#58a6ff; font-weight:600;">${{ "%.2f"|format(dca.qqq_price) }}</span>
+            <span style="color:#484f58;">（采集时价格，请与实际核对）</span>
+          {% else %}
+            <span style="color:#f85149;">价格获取失败</span>
+          {% endif %}
+          · PE
+          {% if dca.pe_ratio %}
+            <span style="color:#58a6ff; font-weight:600;">{{ "%.1f"|format(dca.pe_ratio) }}</span>
+          {% else %}
+            <span style="color:#484f58;">N/A</span>
+          {% endif %}
+          · 月预算 <span style="color:#c9d1d9; font-weight:600;">${{ dca.monthly_budget | int }}</span>
+        </div>
+      </div>
+      <!-- 本期合计金额大字 -->
       <div class="dca-total-box">
-        <div class="dca-total-pct">{{ (dca.total_ratio * 100) | int }}%</div>
-        <div class="dca-total-label">本期投入<br>（×月预算）</div>
+        <div>
+          <div class="dca-total-pct">${{ dca.total_amount | int }}</div>
+          <div class="dca-total-label">本期投入金额<br>（{{ (dca.total_ratio * 100) | int }}% × 月预算）</div>
+        </div>
       </div>
     </div>
 
@@ -411,7 +433,10 @@
         <div class="dca-layer-title">第一层：基础定投</div>
         <div class="dca-layer-desc">{{ dca.layer1.desc }}</div>
       </div>
-      <div class="dca-layer-ratio dca-active">{{ (dca.layer1.ratio * 100) | int }}%</div>
+      <div style="text-align:right; align-self:center;">
+        <div class="dca-layer-ratio dca-active">${{ dca.layer1.amount | int }}</div>
+        <div style="font-size:11px; color:#484f58;">{{ (dca.layer1.ratio * 100) | int }}%</div>
+      </div>
     </div>
 
     <!-- 第二层 -->
@@ -421,12 +446,19 @@
         <div class="dca-layer-title">第二层：估值增强</div>
         <div class="dca-layer-desc">{{ dca.layer2.reason }}</div>
       </div>
-      <div class="dca-layer-ratio
-        {% if not dca.layer2.active %}dca-paused
-        {% elif dca.layer2.multiplier > 1 %}dca-active
-        {% elif dca.layer2.multiplier == 1 %}dca-active
-        {% else %}dca-reduced{% endif %}">
-        {% if dca.layer2.active %}{{ (dca.layer2.ratio * 100) | int }}%{% else %}暂停{% endif %}
+      <div style="text-align:right; align-self:center;">
+        {% if dca.layer2.active %}
+        <div class="dca-layer-ratio
+          {% if dca.layer2.multiplier > 1 %}dca-active
+          {% elif dca.layer2.multiplier == 1 %}dca-active
+          {% else %}dca-reduced{% endif %}">
+          ${{ dca.layer2.amount | int }}
+        </div>
+        <div style="font-size:11px; color:#484f58;">{{ (dca.layer2.ratio * 100) | int }}%</div>
+        {% else %}
+        <div class="dca-layer-ratio dca-paused">暂停</div>
+        <div style="font-size:11px; color:#484f58;">$0</div>
+        {% endif %}
       </div>
     </div>
 
@@ -437,8 +469,14 @@
         <div class="dca-layer-title">第三层：极端机会</div>
         <div class="dca-layer-desc">{{ dca.layer3.reason }}</div>
       </div>
-      <div class="dca-layer-ratio {% if dca.layer3.triggered %}dca-trigger{% else %}dca-paused{% endif %}">
-        {% if dca.layer3.triggered %}{{ (dca.layer3.ratio * 100) | int }}%{% else %}待命{% endif %}
+      <div style="text-align:right; align-self:center;">
+        {% if dca.layer3.triggered %}
+        <div class="dca-layer-ratio dca-trigger">${{ dca.layer3.amount | int }}</div>
+        <div style="font-size:11px; color:#484f58;">{{ (dca.layer3.ratio * 100) | int }}%</div>
+        {% else %}
+        <div class="dca-layer-ratio dca-paused">待命</div>
+        <div style="font-size:11px; color:#484f58;">$0</div>
+        {% endif %}
       </div>
     </div>
 

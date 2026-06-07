@@ -11,18 +11,61 @@ from jinja2 import Environment, FileSystemLoader
 from config import EMAIL_SENDER, EMAIL_PASSWORD, EMAIL_RECEIVER, SMTP_HOST, SMTP_PORT
 
 
+class DotDict:
+    """让 dict 支持点号访问，同时保留 dict 的 get/items 等方法，供 Jinja2 模板使用"""
+    def __init__(self, d: dict):
+        for k, v in (d or {}).items():
+            if isinstance(v, dict):
+                setattr(self, k, DotDict(v))
+            elif isinstance(v, list):
+                setattr(self, k, [DotDict(i) if isinstance(i, dict) else i for i in v])
+            else:
+                setattr(self, k, v)
+
+    def get(self, key, default=None):
+        return getattr(self, key, default)
+
+    def __getitem__(self, key):
+        return getattr(self, key)
+
+    def __contains__(self, key):
+        return hasattr(self, key)
+
+    def __bool__(self):
+        return True
+
+
 def render_html(market_data, analysis, dca_result, s2_result) -> str:
     env = Environment(loader=FileSystemLoader("."), autoescape=True)
     template = env.get_template("template.html")
+
+    # 合并策略二数据
+    market_s2 = market_data.get("s2", {})
+    s2_raw = {
+        "qqq":           market_s2.get("qqq", {}),
+        "sphd":          market_s2.get("sphd", {}),
+        "qqq_premium":   market_s2.get("qqq_premium", {}),
+        "annual_dd":     market_s2.get("annual_dd", {}),
+        "dca":           s2_result.get("dca", {}),
+        "rebalance":     s2_result.get("rebalance", {}),
+        "take_profit":   s2_result.get("take_profit", {}),
+        "recovery":      s2_result.get("recovery", {}),
+        "checklist":     s2_result.get("checklist", []),
+        "monthly_budget": s2_result.get("monthly_budget", 3000),
+        "drawdown_pct":  s2_result.get("drawdown_pct"),
+        "premium_pct":   s2_result.get("premium_pct"),
+        "sphd_div_yield": s2_result.get("sphd_div_yield"),
+    }
+
     return template.render(
         date         = market_data.get("date", ""),
-        quotes       = market_data.get("quotes", []),
-        fear_greed   = market_data.get("fear_greed", {}),
-        vix          = market_data.get("vix", {}),
+        quotes       = [DotDict(q) for q in market_data.get("quotes", [])],
+        fear_greed   = DotDict(market_data.get("fear_greed", {})),
+        vix          = DotDict(market_data.get("vix", {})),
         qqq_drawdown = market_data.get("qqq_drawdown"),
-        analysis     = analysis,
-        dca          = dca_result,
-        s2           = s2_result,
+        analysis     = DotDict(analysis) if isinstance(analysis, dict) else analysis,
+        dca          = DotDict(dca_result),
+        s2           = DotDict(s2_raw),
     )
 
 

@@ -1,9 +1,9 @@
 import os
 
 # ── 策略一标的（行情速览 + 三层定投）────────────────────
-ETF_SYMBOLS = ["QQQ", "SPY"]
+ETF_SYMBOLS = ["QQQ", "SPY","VOO"]
 
-STOCK_SYMBOLS = ["NVDA", "AAPL", "MSFT"]   # 可自行增删
+STOCK_SYMBOLS = ["NVDA", "AAPL", "META"]   # 可自行增删
 
 ALL_SYMBOLS = ETF_SYMBOLS + STOCK_SYMBOLS
 

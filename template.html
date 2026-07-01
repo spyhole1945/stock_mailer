@@ -510,6 +510,134 @@
     {% endif %}
   </div>
 
+
+  <!--
+  将以下代码插入 template.html 中，
+  位置：策略一"💰 本期定投建议"卡片之后，策略二分区标题之前
+-->
+
+<!-- 🎯 Call Wall / Put Wall 关键位 -->
+<div class="card">
+  <div class="card-title"><span class="icon">🎯</span> 期权关键位（Call Wall / Put Wall）</div>
+
+  {% if gex.available %}
+
+  <!-- 区间状态横幅 -->
+  <div style="background:#0d1117; border:1px solid #30363d; border-radius:8px;
+              padding:14px 18px; margin-bottom:16px;
+              display:flex; align-items:center; gap:14px;">
+    <div style="font-size:30px; line-height:1;">{{ gex.analysis.icon }}</div>
+    <div style="flex:1;">
+      <div style="font-size:15px; font-weight:700; color:#e6edf3;">
+        {{ gex.analysis.zone }}
+      </div>
+      <div style="font-size:12px; color:#8b949e; margin-top:3px; line-height:1.6;">
+        {{ gex.analysis.desc }}
+      </div>
+    </div>
+    {% if gex.analysis.gamma_regime %}
+    <div style="padding:4px 12px; border-radius:12px; font-size:11px; font-weight:600;
+      {% if '正' in gex.analysis.gamma_regime %}background:#1a3a2a; color:#3fb950;
+      {% else %}background:#3d1f00; color:#f0883e;{% endif %}">
+      {{ gex.analysis.gamma_regime }}
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- 四个关键位数据格 -->
+  <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;">
+
+    <div style="flex:1; min-width:120px; background:#0d1117; border:1px solid #f85149;
+                border-radius:8px; padding:10px 14px;">
+      <div style="font-size:11px; color:#f85149; margin-bottom:4px;">🔴 Call Wall 压力位</div>
+      <div style="font-size:20px; font-weight:700; color:#e6edf3;">
+        ${{ "%.0f"|format(gex.call_wall) if gex.call_wall else 'N/A' }}
+      </div>
+      <div style="font-size:11px; color:#8b949e; margin-top:3px;">
+        {% if gex.analysis.dist_to_call is not none %}
+          距当前价 {{ "%.1f"|format(gex.analysis.dist_to_call) }}%
+        {% endif %}
+        {% if gex.call_wall_oi %}
+          · OI {{ "{:,}".format(gex.call_wall_oi) }}
+        {% endif %}
+      </div>
+    </div>
+
+    <div style="flex:1; min-width:120px; background:#0d1117; border:1px solid #3fb950;
+                border-radius:8px; padding:10px 14px;">
+      <div style="font-size:11px; color:#3fb950; margin-bottom:4px;">🟢 Put Wall 支撑位</div>
+      <div style="font-size:20px; font-weight:700; color:#e6edf3;">
+        ${{ "%.0f"|format(gex.put_wall) if gex.put_wall else 'N/A' }}
+      </div>
+      <div style="font-size:11px; color:#8b949e; margin-top:3px;">
+        {% if gex.analysis.dist_to_put is not none %}
+          距当前价 {{ "%.1f"|format(gex.analysis.dist_to_put) }}%
+        {% endif %}
+        {% if gex.put_wall_oi %}
+          · OI {{ "{:,}".format(gex.put_wall_oi) }}
+        {% endif %}
+      </div>
+    </div>
+
+    <div style="flex:1; min-width:120px; background:#0d1117; border:1px solid #30363d;
+                border-radius:8px; padding:10px 14px;">
+      <div style="font-size:11px; color:#6e7681; margin-bottom:4px;">⚡ Gamma Flip</div>
+      <div style="font-size:20px; font-weight:700; color:#e6edf3;">
+        ${{ "%.0f"|format(gex.gamma_flip) if gex.gamma_flip else 'N/A' }}
+      </div>
+      <div style="font-size:11px; color:#8b949e; margin-top:3px;">正负 Gamma 分界</div>
+    </div>
+
+    <div style="flex:1; min-width:120px; background:#0d1117; border:1px solid #30363d;
+                border-radius:8px; padding:10px 14px;">
+      <div style="font-size:11px; color:#6e7681; margin-bottom:4px;">😣 Max Pain</div>
+      <div style="font-size:20px; font-weight:700; color:#e6edf3;">
+        ${{ "%.0f"|format(gex.max_pain) if gex.max_pain else 'N/A' }}
+      </div>
+      <div style="font-size:11px; color:#8b949e; margin-top:3px;">期权到期磁力价</div>
+    </div>
+
+  </div>
+
+  <!-- 操作提示 -->
+  <div style="padding:10px 14px; background:#0d1117; border-radius:6px;
+              border-left:3px solid #58a6ff;
+              font-size:12px; color:#c9d1d9; line-height:1.7; margin-bottom:10px;">
+    💡 <strong style="color:#58a6ff;">操作提示</strong>：{{ gex.analysis.hint }}
+  </div>
+
+  <!-- 定投修正提示（仅在有修正时显示）-->
+  {% if gex.adjustment.multiplier != 1.0 %}
+  <div style="padding:10px 14px; background:#1c2128; border-radius:6px;
+              font-size:12px; color:#d29922; line-height:1.6;">
+    {{ gex.adjustment.note }}
+  </div>
+  {% endif %}
+
+  <!-- AI 点评 -->
+  {% if analysis.ai_available and analysis.gex_comment %}
+  <div style="margin-top:12px; padding-top:12px; border-top:1px solid #21262d;
+              font-size:13px; color:#c9d1d9; line-height:1.6;">
+    <span style="font-size:11px; color:#6e7681; font-weight:600;">🤖 AI 点评</span><br>
+    {{ analysis.gex_comment }}
+  </div>
+  {% endif %}
+
+  <!-- 说明注释 -->
+  <div style="margin-top:12px; padding:8px 12px; background:#0d1117; border-radius:6px;
+              font-size:11px; color:#484f58; line-height:1.7;">
+    数据来源：Yahoo Finance 期权链（近45天到期）· 自动计算，盘后数据，仅供参考
+  </div>
+
+  {% else %}
+
+  <div style="padding:16px; color:#6e7681; font-size:13px; text-align:center;">
+    {{ gex.reason if gex.reason else '期权数据暂不可用' }}
+  </div>
+
+  {% endif %}
+</div>
+
   <!-- AI 市场解读 -->
   {% if analysis.ai_available %}
   <div class="card">

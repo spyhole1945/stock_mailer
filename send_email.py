@@ -1,18 +1,15 @@
 """
-send_email.py
-渲染 HTML 模板并通过 163 SMTP 发送邮件
+send_email.py — Jinja2 渲染 + 163 SMTP 发送
 """
-import smtplib
-import ssl
-import datetime
-from email.mime.text import MIMEText
+import smtplib, ssl, datetime
+from email.mime.text      import MIMEText
 from email.mime.multipart import MIMEMultipart
 from jinja2 import Environment, FileSystemLoader
 from config import EMAIL_SENDER, EMAIL_PASSWORD, EMAIL_RECEIVER, SMTP_HOST, SMTP_PORT
 
 
 class DotDict:
-    """让 dict 支持点号访问，同时保留 dict 的 get/items 等方法，供 Jinja2 模板使用"""
+    """让 dict 支持点号访问，供 Jinja2 模板使用"""
     def __init__(self, d: dict):
         for k, v in (d or {}).items():
             if isinstance(v, dict):
@@ -21,27 +18,18 @@ class DotDict:
                 setattr(self, k, [DotDict(i) if isinstance(i, dict) else i for i in v])
             else:
                 setattr(self, k, v)
-
-    def get(self, key, default=None):
-        return getattr(self, key, default)
-
-    def __getitem__(self, key):
-        return getattr(self, key)
-
-    def __contains__(self, key):
-        return hasattr(self, key)
-
-    def __bool__(self):
-        return True
+    def get(self, key, default=None): return getattr(self, key, default)
+    def __getitem__(self, key):       return getattr(self, key)
+    def __contains__(self, key):      return hasattr(self, key)
+    def __bool__(self):               return True
 
 
-def render_html(market_data, analysis, dca_result, s2_result) -> str:
-    env = Environment(loader=FileSystemLoader("."), autoescape=True)
+def render_html(market_data, analysis, dca_result, s2_result, gex_report) -> str:
+    env      = Environment(loader=FileSystemLoader("."), autoescape=True)
     template = env.get_template("template.html")
 
-    # 合并策略二数据
     market_s2 = market_data.get("s2", {})
-    s2_raw = {
+    s2_combined = {
         "qqq":           market_s2.get("qqq", {}),
         "sphd":          market_s2.get("sphd", {}),
         "qqq_premium":   market_s2.get("qqq_premium", {}),
@@ -57,6 +45,9 @@ def render_html(market_data, analysis, dca_result, s2_result) -> str:
         "sphd_div_yield": s2_result.get("sphd_div_yield"),
     }
 
+    # 展平 gex_report，方便模板使用
+    gex = gex_report if isinstance(gex_report, dict) else {}
+
     return template.render(
         date         = market_data.get("date", ""),
         quotes       = [DotDict(q) for q in market_data.get("quotes", [])],
@@ -65,18 +56,25 @@ def render_html(market_data, analysis, dca_result, s2_result) -> str:
         qqq_drawdown = market_data.get("qqq_drawdown"),
         analysis     = DotDict(analysis) if isinstance(analysis, dict) else analysis,
         dca          = DotDict(dca_result),
-        s2           = DotDict(s2_raw),
+        s2           = DotDict(s2_combined),
+        gex          = DotDict(gex),
     )
 
 
-def send(market_data, analysis, dca_result, s2_result) -> bool:
+def send(market_data, analysis, dca_result, s2_result, gex_report=None) -> bool:
+    if gex_report is None:
+        gex_report = {}
     today   = datetime.datetime.now().strftime("%m/%d")
     pe_str  = _qqq_pe(market_data)
     dca_pct = f"{dca_result.get('total_ratio', 1.0)*100:.0f}%"
-    subject = f"📈 美股简报 {today} | QQQ PE {pe_str} | 策略一定投 {dca_pct}"
 
-    html_body = render_html(market_data, analysis, dca_result, s2_result)
+    gex_zone = ""
+    if gex_report.get("available"):
+        gex_zone = f" | {gex_report.get('analysis',{}).get('icon','')} {gex_report.get('analysis',{}).get('zone','')}"
 
+    subject = f"📈 美股简报 {today} | QQQ PE {pe_str} | 定投 {dca_pct}{gex_zone}"
+
+    html_body = render_html(market_data, analysis, dca_result, s2_result, gex_report)
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
     msg["From"]    = EMAIL_SENDER
@@ -96,6 +94,6 @@ def send(market_data, analysis, dca_result, s2_result) -> bool:
 
 
 def _qqq_pe(market_data) -> str:
-    qqq = next((q for q in market_data.get("quotes", []) if q.get("symbol") == "QQQ"), {})
+    qqq = next((q for q in market_data.get("quotes",[]) if q.get("symbol")=="QQQ"), {})
     pe  = qqq.get("pe_ratio")
     return f"{pe:.1f}" if pe else "N/A"
